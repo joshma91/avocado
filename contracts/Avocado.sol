@@ -1,6 +1,19 @@
 pragma solidity ^0.4.17;
 
 contract Avocado {
+
+    address owner;
+
+    // Constructor to initialize contract owner
+    function Avocado() public {
+        owner = msg.sender;
+    }
+
+    // Fallback function to send eth back if no data
+    function () public payable {
+        msg.sender.transfer(msg.value);
+    }
+
     enum PersonType { Teacher, Student }
 
     // Person Structure
@@ -21,7 +34,7 @@ contract Avocado {
     }
 
     // Meeting structure
-    struct Meetings {
+    struct Meeting {
         address student;
         address teacher;
         string description;
@@ -45,6 +58,8 @@ contract Avocado {
     // Tags to filter out users
     // string -> isTeacher (Based on user types) -> Addresses
     mapping(bytes32 => mapping(bool => address[])) public tags;
+
+    mapping(address => Meeting[]) public myMeetings;
 
     // Arrays to store all known teachers, students, and tags
     string[] public tagsList;
