@@ -1,7 +1,6 @@
 pragma solidity ^0.4.17;
 
 contract Avocado {
-
     address owner;
 
     // Constructor to initialize contract owner
@@ -29,7 +28,7 @@ contract Avocado {
 
         // Array of the Hash of completed meetings
         bytes32[] completedMeetings;
-                
+
         bool exists;
     }
 
@@ -59,7 +58,9 @@ contract Avocado {
     // string -> isTeacher (Based on user types) -> Addresses
     mapping(bytes32 => mapping(bool => address[])) public tags;
 
-    mapping(address => Meeting[]) public myMeetings;
+    // Meetings
+    mapping(address => Meeting[]) public activeMeetings;
+    mapping(address => Meeting[]) public completedMeetings;
 
     // Arrays to store all known teachers, students, and tags
     string[] public tagsList;
@@ -83,6 +84,7 @@ contract Avocado {
         
         // PersonType
         user.personType = (isTeacher) ? PersonType.Teacher : PersonType.Student;
+        user.exists = true;
 
         // Can set rest via setPerson
         setPerson(msg.sender, name, description, ethPerHour);
@@ -113,22 +115,26 @@ contract Avocado {
     // Sets Person tag
     // Reason why this is a separate operation
     // Is because it's expensive (Is this the right way?)
-    function setPersonTags(address addr, bytes32[] ts) public {
+    function setPersonTags(address addr, bytes32[] ts) public {        
         require(addr == msg.sender);
         
+        bool isTeacher = users[addr].personType == PersonType.Teacher;
+
         for (uint i = 0; i < ts.length; i++) {
             // Remove all existing association with tag
             prunePersonFromTag(addr, ts[i]);
 
             // Add new tags
-            tags[ts[i]][users[addr].personType == PersonType.Teacher].push(addr);
+            tags[ts[i]][isTeacher].push(addr);
         }        
     }
 
     // Prunes a person from a tag
     function prunePersonFromTag(address addr, bytes32 tag) private {
         // Get the address associated with the tags
-        address[] storage addrOfTags = tags[tag][users[addr].personType == PersonType.Teacher];
+        bool isTeacher = users[addr].personType == PersonType.Teacher;
+        
+        address[] storage addrOfTags = tags[tag][isTeacher];
 
         // Pop user from it
         for (uint i = 0; i < addrOfTags.length; i++) {
