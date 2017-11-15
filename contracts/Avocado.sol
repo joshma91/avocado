@@ -38,8 +38,9 @@ contract Avocado {
         address student;
         address teacher;
         string description;
-        uint32 timestamp; // In epoch land
-        uint8 meetingDuration; // How long is the meeting going to be        
+        uint timestamp; // In epoch land
+        uint meetingDuration; // How long is the meeting going to be   
+        uint ethSpent;     
     }
 
     // Reviews
@@ -59,9 +60,12 @@ contract Avocado {
     // string -> isTeacher (Based on user types) -> Addresses
     mapping(bytes32 => mapping(bool => address[])) public tags;
 
-    // Meetings
-    mapping(address => Meeting[]) public activeMeetings;
-    mapping(address => Meeting[]) public completedMeetings;
+    // Top level Meeting mapping
+    mapping(bytes32 => Meeting) public meeting;
+
+    // Tracking meetingIDs by address
+    mapping(address => bytes32[]) public activeMeetings;
+    mapping(address => bytes32[]) public completedMeetings;
 
     // Arrays to store all known teachers, students, and tags
     string[] public tagsList;
@@ -89,6 +93,54 @@ contract Avocado {
 
         // Can set rest via setPerson
         setPerson(msg.sender, name, description, ethPerHour);
+    }
+
+    function newMeeting (address teacher, address student, string description, uint32 timestamp) public {
+        Meeting memory m;
+        m.meetingID = sha256(teacher, student, timestamp);
+        m.teacher = teacher;
+        m.student = student;
+        m.description = description;
+        m.timestamp = timestamp;
+
+        // Set the top level meeting mapping, then the children teacher/student
+        meeting[m.meetingID] = m;
+        activeMeetings[teacher].push(m.meetingID);
+        activeMeetings[student].push(m.meetingID);
+
+        // TODO: make function payable, and accept a max ETH spend from student
+    }
+
+    function completeMeeting (bytes32 meetingID) public {
+        
+        Meeting storage m = meeting[meetingID];
+        address teacher = m.teacher;
+        address student = m.student;
+        // Set the length of the meeting after completion
+        m.meetingDuration = now - m.timestamp;
+
+        // Calculate cost
+        // This probably produces a student high number, but will do time calcs later
+        m.ethSpent = users[teacher].ethPerHour * m.meetingDuration;
+
+        pruneMeetingFromActive(meetingID, teacher);
+        pruneMeetingFromActive(meetingID, student);
+
+        completedMeetings[teacher].push(meetingID);
+        completedMeetings[student].push(meetingID);
+    }
+
+    function pruneMeetingFromActive(bytes32 meetingToDelete, address addr) public {
+        
+        bytes32[] storage meetingIDs = activeMeetings[addr];
+
+        // Pop meetingID from active list
+        for (uint i = 0; i < meetingIDs.length; i++) {
+            if (meetingIDs[i] == meetingToDelete) {
+                delete meetingIDs[i]; 
+                break;               
+            }
+        }
     }
 
     // Sets person attribute
