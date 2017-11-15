@@ -1,6 +1,5 @@
 pragma solidity ^0.4.17;
 
-
 contract Avocado {
     enum PersonType { Teacher, Student }
 
@@ -38,32 +37,92 @@ contract Avocado {
     }
 
     // Hash of Meeting -> IsTeacher (Based on UserType) -> Review Object
-    mapping(bytes32 => mapping(bool => Ratings)) private ratings;
+    mapping(bytes32 => mapping(bool => Ratings[])) public ratings;
 
     // Users using the platform
-    mapping(address => Person) users;
+    mapping(address => Person) public users;
 
     // Tags to filter out users
     // string -> isTeacher (Based on user types) -> Addresses
-    mapping(string => mapping(bool => address[])) tags;
+    mapping(bytes32 => mapping(bool => address[])) public tags;
 
+    // Arrays to store all known teachers, students, and tags
+    string[] public tagsList;
+    address[] public studentList;
+    address[] public teacherList;
 
-    // Create a new person
-    function setPerson(bool isTeacher, string name, string description, uint ethPerHour) public {
-        Person storage user = users[msg.sender];
+    // Initializes self as a teacher, or student
+    // Once set you can't change this
+    function initSelf(bool isTeacher, string name, string description, uint ethPerHour) public {
+        Person storage user = users[msg.sender];        
 
-        require(user.exists == false);
-
+        // If user doesn't exist then append it to the global list
+        require(!user.exists);
+        
+        // Push to globals
+        if (isTeacher) {
+            teacherList.push(msg.sender);
+        } else {
+            studentList.push(msg.sender);
+        }
+        
+        // PersonType
         user.personType = (isTeacher) ? PersonType.Teacher : PersonType.Student;
+
+        // Can set rest via setPerson
+        setPerson(msg.sender, name, description, ethPerHour);
+    }
+
+    // Sets person attribute
+    function setPerson(address addr, string name, string description, uint ethPerHour) public {
+        require(addr == msg.sender);
+
+        Person storage user = users[addr];
+
         user.name = name;
         user.description = description;
         user.ethPerHour = ethPerHour;
-        user.exists = true;
     }
 
-    function getPerson() public constant returns (string, string, uint) {
-        Person memory user = users[msg.sender];
-
+    // Get person attributes
+    function getPerson(address addr) public constant returns (string, string, uint) {
+        Person memory user = users[addr];
         return (user.name, user.description, user.ethPerHour);
+    }
+
+    // Gets addresses associated with a certain tag
+    function filterByTag(bytes32 t, bool isTeacher) public constant returns (address[]) {
+        return tags[t][isTeacher];
+    }
+
+    // Sets Person tag
+    // Reason why this is a separate operation
+    // Is because it's expensive (Is this the right way?)
+    function setPersonTags(address addr, bytes32[] ts) public {
+        require(addr == msg.sender);
+        
+        for (uint i = 0; i < ts.length; i++) {
+            // Remove all existing association with tag
+            prunePersonFromTag(addr, ts[i]);
+
+            // Add new tags
+            tags[ts[i]][users[addr].personType == PersonType.Teacher].push(addr);
+        }        
+    }
+
+    // Prunes a person from a tag
+    function prunePersonFromTag(address addr, bytes32 tag) private {
+        // Get the address associated with the tags
+        address[] storage addrOfTags = tags[tag][users[addr].personType == PersonType.Teacher];
+
+        // Pop user from it
+        for (uint i = 0; i < addrOfTags.length; i++) {
+            if (addrOfTags[i] == addr) {
+                // Account for last element                
+                addrOfTags[i] = addrOfTags[addrOfTags.length - 1];
+                delete addrOfTags[i]; 
+                break;               
+            }
+        }
     }
 }
