@@ -34,10 +34,11 @@ contract Avocado {
 
     // Meeting structure
     struct Meeting {
+        bytes32 meetingID; // sha256(concat(student, teacher, timestamp))
         address student;
         address teacher;
         string description;
-        uint32 timeInEpoch; // When the session's gonna happen
+        uint32 timestamp; // In epoch land
         uint8 meetingDuration; // How long is the meeting going to be        
     }
 
@@ -133,7 +134,7 @@ contract Avocado {
     function prunePersonFromTag(address addr, bytes32 tag) private {
         // Get the address associated with the tags
         bool isTeacher = users[addr].personType == PersonType.Teacher;
-        
+
         address[] storage addrOfTags = tags[tag][isTeacher];
 
         // Pop user from it
