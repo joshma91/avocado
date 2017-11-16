@@ -31,7 +31,7 @@ contract("Avocado", accounts => {
     instance.initSelf(false, student.name, "", null, { from: student.address });
 
     // Placing some tags in for next test
-    const tagsInBytes32 = teacher.tags.map(x => fromAscii(x));
+    const tagsInBytes32 = teacher.tags.map(fromAscii);
     instance.setPersonTags(teacher.address, tagsInBytes32, { from: josh });
 
     // Fetch the persons back
