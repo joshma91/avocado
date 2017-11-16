@@ -4,8 +4,7 @@ const { fromAscii, prettyLog } = require("./utils");
 contract("Avocado", accounts => {
   const [josh, kendrick, adrian] = accounts;
 
-  // Test to set and retrieve teacher/student
-  it("should return the teacher & student names", async () => {
+  it("should set and return the teacher & student names", async () => {
     const instance = await Avocado.deployed();
 
     const teacher = {
@@ -22,7 +21,7 @@ contract("Avocado", accounts => {
 
     // Setting the teacher and student respectively
     instance.initSelf(
-      true,
+      true, // isTeacher (bool)
       teacher.name,
       teacher.description,
       teacher.weiPerHour,
@@ -36,99 +35,147 @@ contract("Avocado", accounts => {
 
     // Fetch the persons back
     const teacherRes = await instance.getPerson(teacher.address);
-    // console.log("teacherRes");
-    // prettyLog(teacherRes);
-
     const studentRes = await instance.getPerson(student.address);
-    // console.log("studentRes");
-    // prettyLog(studentRes);
 
     // getPerson returns [String name, String, description, weiPerHour]
     assert.equal("josh", teacherRes[0]);
+    assert.equal("kendrick", studentRes[0]);
   });
 
   // This tests the tags system
   it("should return addresses with specified tag", async () => {
     const instance = await Avocado.deployed();
 
-    // Make adrian an instructor so he can input tag
-    instance.initSelf(true, "adrian", "adrian desc", 0, { from: adrian });
-    instance.setPersonTags(adrian, [fromAscii("Japanese")], { from: adrian });
+    // This is data for Adrian, the teacher
+    const adrianObj = {
+      isTeacher: true,
+      address: adrian,
+      name: "adrian",
+      description: "adrian teaching description",
+      weiPerHour: 1000000000000000, // 0.001ETH
+      tags: ["Japanese"],
+    };
 
-    // Get the instructor address with tag 'Japanese'
+    // Create the person object
+    instance.initSelf(
+      adrianObj.isTeacher,
+      adrianObj.name,
+      adrianObj.description,
+      adrianObj.weiPerHour,
+      { from: adrianObj.address }
+    );
+
+    // Assigning tags
+    const adrianTagsInB32 = adrianObj.tags.map(fromAscii);
+    instance.setPersonTags(adrianObj.address, adrianTagsInB32, {
+      from: adrianObj.address,
+    });
+
+    // Get the teacher address with tag 'Japanese'
     const tagAddresses = await instance.filterByTag(
       fromAscii("Japanese"),
-      true
+      true // isTeacher(bool)
     );
-    console.log("the addresses with tag 'Japanese' are: ");
-    prettyLog(tagAddresses);
 
+    // Note that josh teaches japanese as well
     assert.deepEqual([josh, adrian], tagAddresses);
   });
 
   // This portion tests meetings creation/retrieval
-  it("should return the meeting ID & description", async () => {
+  it("should return the meetingID & description", async () => {
     const instance = await Avocado.deployed();
-    const timestamp = 1510820193;
 
+    const mtg = {
+      teacher: josh,
+      student: kendrick,
+      description: "learning japanese",
+      timestamp: 1510820193,
+      maxSpend: 1000000000000000000,
+    };
+
+    // Create new meeting object
     instance.newMeeting(
-      josh,
-      kendrick,
-      "learning japanese",
-      timestamp,
-      {value: 1000000000000000000}
+      mtg.teacher,
+      mtg.student,
+      mtg.description,
+      mtg.timestamp,
+      { value: mtg.maxSpend }
     );
 
     // Retrieve meetingID by obtaining the sha256 hash
     const meetingID = await instance.convertToMeetingId(
-      josh, 
-      kendrick, 
-      timestamp
+      mtg.teacher,
+      mtg.student,
+      mtg.timestamp
     );
-    console.log("the meetingID is: " + meetingID);
 
-    // TODO: Complete the meeting 
-    const completeMeeting = await instance.completeMeeting(meetingID, {from: josh, value: 1000000000000});
+    // Complete the meeting (could be teacher or student), returns an event object
+    const completeMeeting = await instance.completeMeeting(meetingID, {
+      from: josh,
+    });
 
     // Check if the meeting is under josh's completed meetings
     const completedMeetingID = await instance.getCompletedMeetingIds(josh);
     assert.equal(completedMeetingID, meetingID);
-    
-    // PaymentSuccess Event returns args meetingID, teacher addr, student addr, payment amount and duration
-    const meetingResult = completeMeeting.logs.find(function(x){return(x.event == "PaymentSuccess")});
 
-    console.log("wei payed: " + meetingResult.args.value.toNumber());
-    console.log("meeting duration in minutes: " + meetingResult.args.duration.toNumber()/60);
-    
-    // Check if the meeting description is the same as the one we used
+    // PaymentSuccess Event returns args meetingID, teacher addr, student addr, payment amount and duration
+    const meetingResult = completeMeeting.logs.find(
+      x => x.event === "PaymentSuccess"
+    );
+
+    // Check weiPayed is below maxSpend
+    const weiPayed = meetingResult.args.value.toNumber();
+    const belowMaxSpend = weiPayed < mtg.maxSpend;
+    assert.equal(belowMaxSpend, true);
+
+    console.log(
+      "meeting duration in minutes: " +
+        meetingResult.args.duration.toNumber() / 60
+    );
+
+    // Check if meeting description is the same as the one we used
     // getMeeting returns [address teacher, address student, string description, uint duration, uint weiSpent]
     const meetingDetails = await instance.getMeeting(meetingID);
-    console.log("retrieved meeting description: " + meetingDetails[2]);
-
-    assert.equal(meetingDetails[2], "learning japanese");
+    assert.equal(meetingDetails[2], mtg.description);
   });
 
   // Testing the messaging system
   it("should return the sent messages", async () => {
     const instance = await Avocado.deployed();
 
-    instance.sendMessage(josh, "Yo, I want my lesson", {from: kendrick});
-    instance.sendMessage(kendrick, "Chill yo tits dawg, I gotchu", {from: josh});
-    instance.sendMessage(josh, "It's a hackathon fam", {from: kendrick});
+    const msg1 = {
+      to: josh,
+      from: kendrick,
+      msg: "Yo, I want my lesson",
+    };
 
-    const joshMessageCount = await instance.getTotalMessages({from: josh});
-    assert.equal(2, joshMessageCount);
-    
+    const msg2 = {
+      to: kendrick,
+      from: josh,
+      msg: "Chill yo tits dawg, I gotchu",
+    };
+
+    const msg3 = {
+      to: josh,
+      from: kendrick,
+      msg: "It's a hackathon fam",
+    };
+
+    instance.sendMessage(msg1.to, msg1.msg, { from: msg1.from });
+    instance.sendMessage(msg2.to, msg2.msg, { from: msg2.from });
+    instance.sendMessage(msg3.to, msg3.msg, { from: msg3.from });
+
+    const joshMessageCount = await instance.getTotalMessages({ from: josh });
+    assert.equal(joshMessageCount, 2);
+
     let joshMessages = [];
     // Retrieve Josh's messages
     for (i = 0; i < joshMessageCount; i++) {
-      
       // Returns array of messages, first element is string, second is from address
-      joshMessages[i] = await instance.getMessage(i, {from: josh});
+      joshMessages[i] = await instance.getMessage(i, { from: josh });
     }
 
-    console.log("second message sent to josh is: " + joshMessages[1][0]);  
-    assert.equal("It's a hackathon fam", joshMessages[1][0])
-
+    const secondMsgSentToJosh = joshMessages[1][0];
+    assert.equal("It's a hackathon fam", secondMsgSentToJosh);
   });
 });
