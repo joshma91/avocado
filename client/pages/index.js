@@ -1,7 +1,7 @@
-import React from "react"
-import Link from "next/link"
+import React from "react";
+import Link from "next/link";
 
-export default () => (
+const Homepage = () => (
   <div>
     <h1>Home Page</h1>
     <div><Link href="/find_teacher"><a>Find a Teacher</a></Link></div>
@@ -9,4 +9,6 @@ export default () => (
     <div><Link href="/chat"><a>Chat</a></Link></div>
     <div><Link href="/example"><a>Example</a></Link></div>
   </div>
-)
+);
+
+export default Homepage;
