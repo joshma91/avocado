@@ -21,7 +21,7 @@ contract Avocado {
         PersonType personType;        
         string name;        
         string description;                        
-        uint ethPerHour;
+        uint weiPerHour;
 
         // Array of the Hash of the active meetings
         bytes32[] activeMeetings;
@@ -39,8 +39,9 @@ contract Avocado {
         address teacher;
         string description;
         uint timestamp; // In epoch land
-        uint meetingDuration; // How long is the meeting going to be   
-        uint ethSpent;     
+        uint meetingDuration; // How long is the meeting going to be  
+        uint maxSpend;   // In wei
+        uint weiSpent;   // In wei     
     }
 
     // Reviews
@@ -61,11 +62,11 @@ contract Avocado {
     mapping(bytes32 => mapping(bool => address[])) public tags;
 
     // Top level Meeting mapping
-    mapping(bytes32 => Meeting) public meeting;
+    mapping(bytes32 => Meeting) public meetings;
 
     // Tracking meetingIDs by address
-    mapping(address => bytes32[]) public activeMeetings;
-    mapping(address => bytes32[]) public completedMeetings;
+    mapping(address => bytes32[]) public activeMeetingsByUser;
+    mapping(address => bytes32[]) public completedMeetingsByUser;
 
     // Arrays to store all known teachers, students, and tags
     string[] public tagsList;
@@ -74,7 +75,7 @@ contract Avocado {
 
     // Initializes self as a teacher, or student
     // Once set you can't change this
-    function initSelf(bool isTeacher, string name, string description, uint ethPerHour) public {
+    function initSelf(bool isTeacher, string name, string description, uint weiPerHour) public {
         Person storage user = users[msg.sender];        
 
         // If user doesn't exist then append it to the global list
@@ -92,47 +93,72 @@ contract Avocado {
         user.exists = true;
 
         // Can set rest via setPerson
-        setPerson(msg.sender, name, description, ethPerHour);
+        setPerson(msg.sender, name, description, weiPerHour);
     }
 
-    function newMeeting (address teacher, address student, string description, uint32 timestamp) public {
+    // Sets person attribute
+    function setPerson(address addr, string name, string description, uint weiPerHour) public {
+        require(addr == msg.sender);
+
+        Person storage user = users[addr];
+
+        user.name = name;
+        user.description = description;
+        user.weiPerHour = weiPerHour;
+    }
+
+    function newMeeting (address teacher, address student, string description, uint maxSpend) public payable {
         Meeting memory m;
-        m.meetingID = sha256(teacher, student, timestamp);
+        m.meetingID = sha256(teacher, student, now);
         m.teacher = teacher;
         m.student = student;
         m.description = description;
-        m.timestamp = timestamp;
+        m.timestamp = now;  // uses block.timestamp - easier to use, but each block is ~20s so not the most accurate
+        m.maxSpend = maxSpend;
 
         // Set the top level meeting mapping, then the children teacher/student
-        meeting[m.meetingID] = m;
-        activeMeetings[teacher].push(m.meetingID);
-        activeMeetings[student].push(m.meetingID);
+        meetings[m.meetingID] = m;
+        activeMeetingsByUser[teacher].push(m.meetingID);
+        activeMeetingsByUser[student].push(m.meetingID);
 
         // TODO: make function payable, and accept a max ETH spend from student
     }
 
-    function completeMeeting (bytes32 meetingID) public {
+    // Modifier allowing only the teacher or student to call
+    modifier teacherOrStudentOnly(bytes32 meetingID) {
+        Meeting memory m = meetings[meetingID];
+        require(msg.sender == m.teacher || msg.sender == m.student);
+        _;
+    }
+
+    function completeMeeting (bytes32 meetingID) public teacherOrStudentOnly(meetingID) {
         
-        Meeting storage m = meeting[meetingID];
+        Meeting storage m = meetings[meetingID];
         address teacher = m.teacher;
         address student = m.student;
-        // Set the length of the meeting after completion
-        m.meetingDuration = now - m.timestamp;
+        // Set the length of the meeting after completion in seconds
+        m.meetingDuration = now - m.timestamp;  
 
         // Calculate cost
-        // This probably produces a student high number, but will do time calcs later
-        m.ethSpent = users[teacher].ethPerHour * m.meetingDuration;
+        // This probably produces a stupid high number, but will do time calcs later
+        m.weiSpent = users[teacher].weiPerHour * m.meetingDuration/3600;
 
         pruneMeetingFromActive(meetingID, teacher);
         pruneMeetingFromActive(meetingID, student);
 
-        completedMeetings[teacher].push(meetingID);
-        completedMeetings[student].push(meetingID);
+        completedMeetingsByUser[teacher].push(meetingID);
+        completedMeetingsByUser[student].push(meetingID);
+
+        // Transfer weis 
+        teacher.transfer(m.weiSpent);
+        if (m.weiSpent < m.maxSpend) {
+            student.transfer(m.maxSpend - m.weiSpent);
+        }
     }
 
     function pruneMeetingFromActive(bytes32 meetingToDelete, address addr) public {
         
-        bytes32[] storage meetingIDs = activeMeetings[addr];
+        bytes32[] storage meetingIDs = activeMeetingsByUser[addr];
 
         // Pop meetingID from active list
         for (uint i = 0; i < meetingIDs.length; i++) {
@@ -143,21 +169,10 @@ contract Avocado {
         }
     }
 
-    // Sets person attribute
-    function setPerson(address addr, string name, string description, uint ethPerHour) public {
-        require(addr == msg.sender);
-
-        Person storage user = users[addr];
-
-        user.name = name;
-        user.description = description;
-        user.ethPerHour = ethPerHour;
-    }
-
     // Get person attributes
     function getPerson(address addr) public constant returns (string, string, uint) {
         Person memory user = users[addr];
-        return (user.name, user.description, user.ethPerHour);
+        return (user.name, user.description, user.weiPerHour);
     }
 
     // Gets addresses associated with a certain tag
@@ -199,4 +214,25 @@ contract Avocado {
             }
         }
     }
+    
+    // Getting list of completed meetings - size 10 array is arbitrary but must be fixed size
+    function getCompletedMeetings(address addr) public constant returns (bytes32[10]) {
+        bytes32[] completedMeetings = completedMeetingsByUser[addr];
+        bytes32[10] memory outputArray;
+        for (uint i = 0; i < completedMeetings.length; i++) {
+            outputArray[i] = completedMeetings[i];
+        }
+        return outputArray; 
+    }
+
+    // Dump meeting details given a meetingID
+    function getMeeting(bytes32 meetingID) public constant returns (address teacher, address student, string description, uint meetingDuration, uint weiSpent) {
+        Meeting memory m = meetings[meetingID];
+        teacher = m.teacher;
+        student = m.student;
+        description = m.description;
+        meetingDuration = m.meetingDuration;
+        weiSpent = m.weiSpent;
+    }
+     
 }
