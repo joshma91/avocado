@@ -12,7 +12,7 @@ contract("Avocado", accounts => {
       address: josh,
       name: "josh",
       description: "don't let Josh teach",
-      weiPerHour: 100000000000000000, // 0.1ETH
+      weiPerHour: 1000000000000000, // 0.001ETH
       tags: ["Japanese", "Biology", "Memes"],
     };
     const student = {
@@ -76,7 +76,7 @@ contract("Avocado", accounts => {
       kendrick,
       "learning japanese",
       timestamp,
-      100000000000000000
+      {value: 1000000000000000000}
     );
 
     // Retrieve meetingID by obtaining the sha256 hash
@@ -88,16 +88,23 @@ contract("Avocado", accounts => {
     console.log("the meetingID is: " + meetingID);
 
     // TODO: Complete the meeting 
-    instance.completeMeeting(meetingID, {from: josh});
+    const completeMeeting = await instance.completeMeeting(meetingID, {from: josh, value: 1000000000000});
 
     // Check if the meeting is under josh's completed meetings
     const completedMeetingID = await instance.getCompletedMeetingIds(josh);
     assert.equal(completedMeetingID, meetingID);
+    
+    // PaymentSuccess Event returns args meetingID, teacher addr, student addr, payment amount and duration
+    const meetingResult = completeMeeting.logs.find(function(x){return(x.event == "PaymentSuccess")});
 
+    console.log("wei payed: " + meetingResult.args.value.toNumber());
+    console.log("meeting duration in minutes: " + meetingResult.args.duration.toNumber()/60);
+    
     // Check if the meeting description is the same as the one we used
     // getMeeting returns [address teacher, address student, string description, uint duration, uint weiSpent]
     const meetingDetails = await instance.getMeeting(meetingID);
     console.log("retrieved meeting description: " + meetingDetails[2]);
+
     assert.equal(meetingDetails[2], "learning japanese");
   });
 });

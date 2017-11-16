@@ -75,6 +75,8 @@ contract Avocado {
     address[] public studentList;
     address[] public teacherList;
 
+    event PaymentSuccess(bytes32 translationID, address teacher, address student, uint value, uint duration);
+
     // Initializes self as a teacher, or student
     // Once set you can't change this
     function initSelf(bool isTeacher, string name, string description, uint weiPerHour) public {
@@ -109,21 +111,19 @@ contract Avocado {
         user.weiPerHour = weiPerHour;
     }
 
-    function newMeeting (address teacher, address student, string description, uint timestamp, uint maxSpend) public payable {
+    function newMeeting (address teacher, address student, string description, uint timestamp) public payable {
         Meeting memory m;
         m.meetingID = convertToMeetingId(teacher, student, timestamp);
         m.teacher = teacher;
         m.student = student;
         m.description = description;
         m.timestamp = timestamp;
-        m.maxSpend = maxSpend;
+        m.maxSpend = msg.value; // Student puts up ETH when creating the meeting = maxSpend
 
         // Set the top level meeting mapping, then the children teacher/student
         meetings[m.meetingID] = m;
         activeMeetingIdsByUser[teacher].push(m.meetingID);
         activeMeetingIdsByUser[student].push(m.meetingID);
-
-        // TODO: make function payable, and accept a max ETH spend from student
     }
 
     // Sends message to person
@@ -172,11 +172,16 @@ contract Avocado {
         completedMeetingIdsByUser[teacher].push(meetingID);
         completedMeetingIdsByUser[student].push(meetingID);
 
-        // TODO: Transfer weis and deposit
-        // teacher.transfer(m.weiSpent);
-        // if (m.weiSpent < m.maxSpend) {
-        //     student.transfer(m.maxSpend - m.weiSpent);
-        // }
+        // Transfer weis and deposit
+        if (this.balance >= m.weiSpent) {
+            teacher.transfer(m.weiSpent);
+
+            PaymentSuccess(meetingID, teacher, student, m.weiSpent, m.duration);
+
+            if (m.weiSpent < m.maxSpend) {
+                student.transfer(m.maxSpend - m.weiSpent);
+            }
+        }
     }
 
     // Prune meetings
