@@ -107,4 +107,28 @@ contract("Avocado", accounts => {
 
     assert.equal(meetingDetails[2], "learning japanese");
   });
+
+  // Testing the messaging system
+  it("should return the sent messages", async () => {
+    const instance = await Avocado.deployed();
+
+    instance.sendMessage(josh, "Yo, I want my lesson", {from: kendrick});
+    instance.sendMessage(kendrick, "Chill yo tits dawg, I gotchu", {from: josh});
+    instance.sendMessage(josh, "It's a hackathon fam", {from: kendrick});
+
+    const joshMessageCount = await instance.getTotalMessages({from: josh});
+    assert.equal(2, joshMessageCount);
+    
+    let joshMessages = [];
+    // Retrieve Josh's messages
+    for (i = 0; i < joshMessageCount; i++) {
+      
+      // Returns array of messages, first element is string, second is from address
+      joshMessages[i] = await instance.getMessage(i, {from: josh});
+    }
+
+    console.log("second message sent to josh is: " + joshMessages[1][0]);  
+    assert.equal("It's a hackathon fam", joshMessages[1][0])
+
+  });
 });
