@@ -1,5 +1,6 @@
+/* globals alert */
 import React from "react";
-import getWeb3 from "./web3";
+import getWeb3 from "./getWeb3";
 import { getAccounts, getContractInstance } from "./utils";
 
 const withWeb3 = PassedComponent => class extends React.Component {
@@ -12,9 +13,7 @@ const withWeb3 = PassedComponent => class extends React.Component {
       const contractInstance = await getContractInstance(web3);
       this.setState({ web3, accounts, contractInstance });
     } catch (error) {
-      alert(
-        "Failed to load web3, accounts, and contract. Check console for details."
-      );
+      alert(`Failed to load web3, accounts, and contract. Check console for details.`);
       console.log(error);
     }
   }
