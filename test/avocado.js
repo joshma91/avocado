@@ -36,12 +36,12 @@ contract("Avocado", accounts => {
 
     // Fetch the persons back
     const teacherRes = await instance.getPerson(teacher.address);
-    console.log("teacherRes");
-    prettyLog(teacherRes);
+    // console.log("teacherRes");
+    // prettyLog(teacherRes);
 
     const studentRes = await instance.getPerson(student.address);
-    console.log("studentRes");
-    prettyLog(studentRes);
+    // console.log("studentRes");
+    // prettyLog(studentRes);
 
     // getPerson returns [String name, String, description, weiPerHour]
     assert.equal("josh", teacherRes[0]);
@@ -60,8 +60,8 @@ contract("Avocado", accounts => {
       fromAscii("Japanese"),
       true
     );
-    console.log("the returned addresses are: ");
-    prettyLog(tagAddresses);
+    // console.log("the returned addresses are: ");
+    // prettyLog(tagAddresses);
 
     assert.deepEqual([josh, adrian], tagAddresses);
   });
@@ -85,8 +85,8 @@ contract("Avocado", accounts => {
       kendrick,
       timestamp
     );
-    console.log("meetingID");
-    prettyLog(meetingID);
+    // console.log("meetingID");
+    // prettyLog(meetingID);
 
     // TODO: Complete the meeting
     // instance.completeMeeting(meetingID, {from: josh});
