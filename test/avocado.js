@@ -1,5 +1,5 @@
 const Avocado = artifacts.require("./Avocado.sol");
-const web3 = require('web3');
+const { fromAscii, prettyLog } = require("./utils");
 
 contract("Avocado", accounts => {
   const [josh, kendrick, adrian] = accounts;
@@ -13,57 +13,78 @@ contract("Avocado", accounts => {
       name: "josh",
       description: "don't let Josh teach",
       weiPerHour: 100000000000000000, // 0.1ETH
-      tags: ["Japanese", "Biology", "Memes"]
-    }
+      tags: ["Japanese", "Biology", "Memes"],
+    };
     const student = {
       address: kendrick,
       name: "kendrick",
-    }
+    };
 
     // Setting the teacher and student respectively
-    instance.initSelf(true, teacher.name, teacher.description, teacher.weiPerHour, {from: teacher.address});
-    instance.initSelf(false, student.name, '', null, {from: student.address});  
+    instance.initSelf(
+      true,
+      teacher.name,
+      teacher.description,
+      teacher.weiPerHour,
+      { from: teacher.address }
+    );
+    instance.initSelf(false, student.name, "", null, { from: student.address });
 
     // Placing some tags in for next test
-    const tagsInBytes32 = teacher.tags.map(x => web3.utils.fromAscii(x));
-    instance.setPersonTags(teacher.address, tagsInBytes32, {from: josh});
+    const tagsInBytes32 = teacher.tags.map(fromAscii);
+    instance.setPersonTags(teacher.address, tagsInBytes32, { from: josh });
 
-    // Fetch the persons back 
+    // Fetch the persons back
     const teacherRes = await instance.getPerson(teacher.address);
-    console.log(teacherRes);
+    // console.log("teacherRes");
+    // prettyLog(teacherRes);
 
     const studentRes = await instance.getPerson(student.address);
-    console.log(studentRes);
+    // console.log("studentRes");
+    // prettyLog(studentRes);
 
     // getPerson returns [String name, String, description, weiPerHour]
-    assert.equal("josh", teacherRes[0]); 
+    assert.equal("josh", teacherRes[0]);
   });
 
-  // This tests the tags system 
+  // This tests the tags system
   it("should return addresses with specified tag", async () => {
     const instance = await Avocado.deployed();
 
     // Make adrian an instructor so he can input tag
-    instance.initSelf(true, "adrian", "adrian desc", 0, {from: adrian});
-    instance.setPersonTags(adrian, [web3.utils.fromAscii("Japanese")], {from: adrian});
+    instance.initSelf(true, "adrian", "adrian desc", 0, { from: adrian });
+    instance.setPersonTags(adrian, [fromAscii("Japanese")], { from: adrian });
 
     // Get the instructor address with tag 'Japanese'
-    const tagAddresses = await instance.filterByTag(web3.utils.fromAscii("Japanese"), true);
-    console.log("the addresses with the tag 'Japanese' are: " + tagAddresses);
+    const tagAddresses = await instance.filterByTag(
+      fromAscii("Japanese"),
+      true
+    );
+    // console.log("the returned addresses are: ");
+    // prettyLog(tagAddresses);
 
     assert.deepEqual([josh, adrian], tagAddresses);
-  })
+  });
 
   // This portion tests meetings creation/retrieval
   it("should return the meeting ID & description", async () => {
     const instance = await Avocado.deployed();
-    const timestamp = 1510820193
+    const timestamp = 1510820193;
 
-    instance.newMeeting(josh, kendrick, "learning japanese", timestamp,
-    100000000000000000);
+    instance.newMeeting(
+      josh,
+      kendrick,
+      "learning japanese",
+      timestamp,
+      100000000000000000
+    );
 
     // Retrieve meetingID by obtaining the sha256 hash
-    const meetingID = await instance.convertToMeetingId(josh, kendrick, timestamp);
+    const meetingID = await instance.convertToMeetingId(
+      josh, 
+      kendrick, 
+      timestamp
+    );
     console.log("the meetingID is: " + meetingID);
 
     // TODO: Complete the meeting 
@@ -79,4 +100,4 @@ contract("Avocado", accounts => {
     console.log("retrieved meeting description: " + meetingDetails[2]);
     assert.equal(meetingDetails[2], "learning japanese");
   });
-})
+});
