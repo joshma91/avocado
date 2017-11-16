@@ -49,13 +49,13 @@ contract("Avocado", accounts => {
 
     // Get the instructor address with tag 'Japanese'
     const tagAddresses = await instance.filterByTag(web3.utils.fromAscii("Japanese"), true);
-    console.log("the returned addresses are: " + tagAddresses);
+    console.log("the addresses with the tag 'Japanese' are: " + tagAddresses);
 
     assert.deepEqual([josh, adrian], tagAddresses);
   })
 
   // This portion tests meetings creation/retrieval
-  it("should return the meeting description", async () => {
+  it("should return the meeting ID & description", async () => {
     const instance = await Avocado.deployed();
     const timestamp = 1510820193
 
@@ -64,15 +64,19 @@ contract("Avocado", accounts => {
 
     // Retrieve meetingID by obtaining the sha256 hash
     const meetingID = await instance.convertToMeetingId(josh, kendrick, timestamp);
-    console.log(meetingID);
+    console.log("the meetingID is: " + meetingID);
 
     // TODO: Complete the meeting 
-    // instance.completeMeeting(meetingID, {from: josh});
+    instance.completeMeeting(meetingID, {from: josh});
 
     // Check if the meeting is under josh's completed meetings
-    // const completedIds = await instance.getCompletedMeetingIds(josh);
-    // assert.equal(meetingID, completedIds[0]);
+    const completedMeetingID = await instance.getCompletedMeetingIds(josh);
+    assert.equal(completedMeetingID, meetingID);
 
-    assert.equal(1,1)
+    // Check if the meeting description is the same as the one we used
+    // getMeeting returns [address teacher, address student, string description, uint duration, uint weiSpent]
+    const meetingDetails = await instance.getMeeting(meetingID);
+    console.log("retrieved meeting description: " + meetingDetails[2]);
+    assert.equal(meetingDetails[2], "learning japanese");
   });
 })
