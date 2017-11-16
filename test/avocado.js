@@ -60,8 +60,8 @@ contract("Avocado", accounts => {
       fromAscii("Japanese"),
       true
     );
-    // console.log("the returned addresses are: ");
-    // prettyLog(tagAddresses);
+    console.log("the addresses with tag 'Japanese' are: ");
+    prettyLog(tagAddresses);
 
     assert.deepEqual([josh, adrian], tagAddresses);
   });
