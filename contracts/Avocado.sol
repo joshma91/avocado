@@ -155,7 +155,7 @@ contract Avocado {
         _;
     }
 
-    function completeMeeting (bytes32 meetingID) public isUserInMeeting(meetingID) {        
+    function completeMeeting (bytes32 meetingID) public payable isUserInMeeting(meetingID) {        
         Meeting storage m = meetings[meetingID];
         address teacher = m.teacher;
         address student = m.student;
@@ -172,11 +172,11 @@ contract Avocado {
         completedMeetingIdsByUser[teacher].push(meetingID);
         completedMeetingIdsByUser[student].push(meetingID);
 
-        // Transfer weis and deposit
-        teacher.transfer(m.weiSpent);
-        if (m.weiSpent < m.maxSpend) {
-            student.transfer(m.maxSpend - m.weiSpent);
-        }
+        // TODO: Transfer weis and deposit
+        // teacher.transfer(m.weiSpent);
+        // if (m.weiSpent < m.maxSpend) {
+        //     student.transfer(m.maxSpend - m.weiSpent);
+        // }
     }
 
     // Prune meetings
