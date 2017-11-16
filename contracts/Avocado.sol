@@ -32,20 +32,26 @@ contract Avocado {
         address teacher;
         string description;
         uint timestamp; // In epoch land
-        uint meetingDuration; // How long is the meeting going to be  
+        uint duration; // How long is the meeting going to be  
         uint maxSpend;   // In wei
         uint weiSpent;   // In wei
     }
 
     // Reviews
-    struct Ratings {
+    struct Rating {
         address addr;
         uint rating; // out of 5
         string description; // Short review description
     }
 
+    // Private Messages
+    struct Message {
+        address from;        
+        string content; // Can only send messages of 250 bytes long (like a tweet)        
+    }
+
     // Hash of Meeting -> IsTeacher (Based on UserType) -> Review Object
-    mapping(bytes32 => mapping(bool => Ratings[])) public ratings;
+    mapping(bytes32 => mapping(bool => Rating[])) public ratings;
 
     // Users using the platform
     mapping(address => Person) public users;
@@ -53,6 +59,9 @@ contract Avocado {
     // Tags to filter out users
     // string -> isTeacher (Based on user types) -> Addresses
     mapping(bytes32 => mapping(bool => address[])) public tags;
+
+    // Private messages
+    mapping(address => Message[]) public messages;
 
     // Top level Meeting mapping
     mapping(bytes32 => Meeting) public meetings;
@@ -100,13 +109,13 @@ contract Avocado {
         user.weiPerHour = weiPerHour;
     }
 
-    function newMeeting (address teacher, address student, string description, uint maxSpend) public payable {
+    function newMeeting (address teacher, address student, string description, uint timestamp, uint maxSpend) public payable {
         Meeting memory m;
-        m.meetingID = sha256(teacher, student, now);
+        m.meetingID = convertToMeetingId(teacher, student, timestamp);
         m.teacher = teacher;
         m.student = student;
         m.description = description;
-        m.timestamp = now;  // uses block.timestamp - easier to use, but each block is ~20s so not the most accurate
+        m.timestamp = timestamp;
         m.maxSpend = maxSpend;
 
         // Set the top level meeting mapping, then the children teacher/student
@@ -115,6 +124,28 @@ contract Avocado {
         activeMeetingIdsByUser[student].push(m.meetingID);
 
         // TODO: make function payable, and accept a max ETH spend from student
+    }
+
+    // Sends message to person
+    function sendMessage(address to, string content) public {        
+        messages[to].push(
+            Message({
+                from: msg.sender,
+                content: content                
+            })
+        );
+    }
+
+    // Get Message N
+    function getMessage(uint128 n) public view returns (string, address) {
+        Message[] memory m = messages[msg.sender];
+        require(n < m.length);
+        return (m[n].content, m[n].from);
+    }
+
+    // Gets user's total number of messages
+    function getTotalMessages() public view returns (uint) {
+        return messages[msg.sender].length;
     }
 
     // Modifier allowing only the users in the meeting to call
@@ -129,11 +160,11 @@ contract Avocado {
         address teacher = m.teacher;
         address student = m.student;
         // Set the length of the meeting after completion in seconds
-        m.meetingDuration = now - m.timestamp;  
+        m.duration = now - m.timestamp;  
 
         // Calculate cost
         // This probably produces a stupid high number, but will do time calcs later
-        m.weiSpent = users[teacher].weiPerHour * m.meetingDuration/3600;
+        m.weiSpent = users[teacher].weiPerHour * m.duration/3600;
 
         pruneMeetingFromActive(meetingID, teacher);
         pruneMeetingFromActive(meetingID, student);
@@ -213,12 +244,12 @@ contract Avocado {
     }
 
     // Dump meeting details given a meetingID
-    function getMeeting(bytes32 meetingID) public constant returns (address teacher, address student, string description, uint meetingDuration, uint weiSpent) {
+    function getMeeting(bytes32 meetingID) public constant returns (address teacher, address student, string description, uint duration, uint weiSpent) {
         Meeting memory m = meetings[meetingID];
         teacher = m.teacher;
         student = m.student;
         description = m.description;
-        meetingDuration = m.meetingDuration;
+        duration = m.duration;
         weiSpent = m.weiSpent;
     }
      
