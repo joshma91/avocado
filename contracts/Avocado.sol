@@ -22,13 +22,6 @@ contract Avocado {
         string name;        
         string description;                        
         uint weiPerHour;
-
-        // Array of the Hash of the active meetings
-        bytes32[] activeMeetings;
-
-        // Array of the Hash of completed meetings
-        bytes32[] completedMeetings;
-
         bool exists;
     }
 
@@ -41,7 +34,7 @@ contract Avocado {
         uint timestamp; // In epoch land
         uint meetingDuration; // How long is the meeting going to be  
         uint maxSpend;   // In wei
-        uint weiSpent;   // In wei     
+        uint weiSpent;   // In wei
     }
 
     // Reviews
@@ -65,8 +58,8 @@ contract Avocado {
     mapping(bytes32 => Meeting) public meetings;
 
     // Tracking meetingIDs by address
-    mapping(address => bytes32[]) public activeMeetingsByUser;
-    mapping(address => bytes32[]) public completedMeetingsByUser;
+    mapping(address => bytes32[]) public activeMeetingIdsByUser;
+    mapping(address => bytes32[]) public completedMeetingIdsByUser;
 
     // Arrays to store all known teachers, students, and tags
     string[] public tagsList;
@@ -118,21 +111,20 @@ contract Avocado {
 
         // Set the top level meeting mapping, then the children teacher/student
         meetings[m.meetingID] = m;
-        activeMeetingsByUser[teacher].push(m.meetingID);
-        activeMeetingsByUser[student].push(m.meetingID);
+        activeMeetingIdsByUser[teacher].push(m.meetingID);
+        activeMeetingIdsByUser[student].push(m.meetingID);
 
         // TODO: make function payable, and accept a max ETH spend from student
     }
 
-    // Modifier allowing only the teacher or student to call
-    modifier teacherOrStudentOnly(bytes32 meetingID) {
+    // Modifier allowing only the users in the meeting to call
+    modifier isUserInMeeting(bytes32 meetingID) {
         Meeting memory m = meetings[meetingID];
         require(msg.sender == m.teacher || msg.sender == m.student);
         _;
     }
 
-    function completeMeeting (bytes32 meetingID) public teacherOrStudentOnly(meetingID) {
-        
+    function completeMeeting (bytes32 meetingID) public isUserInMeeting(meetingID) {        
         Meeting storage m = meetings[meetingID];
         address teacher = m.teacher;
         address student = m.student;
@@ -146,19 +138,19 @@ contract Avocado {
         pruneMeetingFromActive(meetingID, teacher);
         pruneMeetingFromActive(meetingID, student);
 
-        completedMeetingsByUser[teacher].push(meetingID);
-        completedMeetingsByUser[student].push(meetingID);
+        completedMeetingIdsByUser[teacher].push(meetingID);
+        completedMeetingIdsByUser[student].push(meetingID);
 
-        // Transfer weis 
+        // Transfer weis and deposit
         teacher.transfer(m.weiSpent);
         if (m.weiSpent < m.maxSpend) {
             student.transfer(m.maxSpend - m.weiSpent);
         }
     }
 
-    function pruneMeetingFromActive(bytes32 meetingToDelete, address addr) public {
-        
-        bytes32[] storage meetingIDs = activeMeetingsByUser[addr];
+    // Prune meetings
+    function pruneMeetingFromActive(bytes32 meetingToDelete, address addr) public {        
+        bytes32[] storage meetingIDs = activeMeetingIdsByUser[addr];
 
         // Pop meetingID from active list
         for (uint i = 0; i < meetingIDs.length; i++) {
@@ -194,7 +186,7 @@ contract Avocado {
 
             // Add new tags
             tags[ts[i]][isTeacher].push(addr);
-        }        
+        }
     }
 
     // Prunes a person from a tag
@@ -215,14 +207,9 @@ contract Avocado {
         }
     }
     
-    // Getting list of completed meetings - size 10 array is arbitrary but must be fixed size
-    function getCompletedMeetings(address addr) public constant returns (bytes32[10]) {
-        bytes32[] completedMeetings = completedMeetingsByUser[addr];
-        bytes32[10] memory outputArray;
-        for (uint i = 0; i < completedMeetings.length; i++) {
-            outputArray[i] = completedMeetings[i];
-        }
-        return outputArray; 
+    // Getting list of completed meetings
+    function getCompletedMeetingIds(address addr) public constant returns (bytes32[]) {
+        return completedMeetingIdsByUser[addr];
     }
 
     // Dump meeting details given a meetingID
@@ -235,4 +222,9 @@ contract Avocado {
         weiSpent = m.weiSpent;
     }
      
+    // Get meeting Id given the parameters
+    // Doesn't accept a struct as a function parameter, which is why I'm doing it this way
+    function convertToMeetingId(address teacherAddr, address studentAddr, uint timestamp) public pure returns (bytes32) {
+        return sha256(teacherAddr, studentAddr, timestamp);
+    }
 }
