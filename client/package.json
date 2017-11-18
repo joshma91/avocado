@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "next": "^4.1.4",
-    "react": "^16.1.0",
-    "react-dom": "^16.1.0",
+    "react": "^16.1.1",
+    "react-dom": "^16.1.1",
     "rtcmulticonnection-v3": "^3.4.4",
     "socket.io": "^2.0.4",
     "socket.io-client": "^2.0.4",

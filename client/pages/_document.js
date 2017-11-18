@@ -5,8 +5,7 @@ import { ServerStyleSheet } from "styled-components";
 export default class MyDocument extends Document {
   static getInitialProps({ renderPage }) {
     const sheet = new ServerStyleSheet();
-    const page = renderPage(App => props =>
-      sheet.collectStyles(<App {...props} />));
+    const page = renderPage(App => props => sheet.collectStyles(<App {...props} />));
     const styleTags = sheet.getStyleElement();
     return { ...page, styleTags };
   }
@@ -17,7 +16,7 @@ export default class MyDocument extends Document {
         <Head>
           <title>Avocado</title>
           <script src="https://rtcmulticonnection.herokuapp.com/dist/RTCMultiConnection.min.js" />
-          <script src="https://rtcmulticonnection.herokuapp.com/socket.io/socket.io.js"/>
+          <script src="https://rtcmulticonnection.herokuapp.com/socket.io/socket.io.js" />
           {this.props.styleTags}
         </Head>
         <body>

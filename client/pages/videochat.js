@@ -26,7 +26,7 @@ class VideoChat extends React.Component {
       document.body.appendChild(event.mediaElement);
     };
 
-    const predefinedRoomId = `joshadrian`;
+    const predefinedRoomId = `joshma`;
 
     document.getElementById(`btn-open-room`).onclick = function () {
       this.disabled = true;
