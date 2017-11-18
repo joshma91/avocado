@@ -13,6 +13,7 @@ const Homepage = () => (
     <div><Link href="/teacher_onboarding"><a>Teacher Onboarding</a></Link></div>
     <div><Link href="/chat"><a>Chat</a></Link></div>
     <div><Link href="/example"><a>Example</a></Link></div>
+    <div><Link href="/videochat"><a>Video Chat</a></Link></div>
   </div>
 );
 

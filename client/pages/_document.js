@@ -16,6 +16,8 @@ export default class MyDocument extends Document {
       <html lang="en-US">
         <Head>
           <title>Avocado</title>
+          <script src="https://rtcmulticonnection.herokuapp.com/dist/RTCMultiConnection.min.js" />
+          <script src="https://rtcmulticonnection.herokuapp.com/socket.io/socket.io.js"/>
           {this.props.styleTags}
         </Head>
         <body>
