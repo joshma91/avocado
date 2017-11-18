@@ -6,6 +6,8 @@ contract Avocado {
     // Constructor to initialize contract owner
     function Avocado() public {
         owner = msg.sender;
+        // We will use position 0 to store empty tag
+        tagsList.push(0x0);
     }
 
     // Fallback function to send eth back if no data
@@ -59,6 +61,7 @@ contract Avocado {
     // Tags to filter out users
     // string -> isTeacher (Based on user types) -> Addresses
     mapping(bytes32 => mapping(bool => address[])) public tags;
+    mapping(bytes32 => uint) public tagIndex;
 
     // Private messages
     mapping(address => Message[]) public messages;
@@ -71,7 +74,7 @@ contract Avocado {
     mapping(address => bytes32[]) public completedMeetingIdsByUser;
 
     // Arrays to store all known teachers, students, and tags
-    string[] public tagsList;
+    bytes32[] public tagsList;
     address[] public studentList;
     address[] public teacherList;
 
@@ -222,7 +225,29 @@ contract Avocado {
 
             // Add new tags
             tags[ts[i]][isTeacher].push(addr);
+            addToTagsList(ts[i]);
         }
+    }
+
+    // Add unique tags to tagsList
+    function addToTagsList(bytes32 tag) private {
+        if (!inTagArray(tag)) {
+            // Append
+            tagIndex[tag] = tagsList.length;
+            tagsList.push(tag);
+        }
+    }
+
+    // Check to see if tag exists in the mapping already
+    function inTagArray(bytes32 tag) private view returns (bool) {
+        if (tagIndex[tag] > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    function getTagsList() public constant returns (bytes32[] ts) {
+        ts = tagsList;
     }
 
     // Prunes a person from a tag

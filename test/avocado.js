@@ -1,5 +1,5 @@
 const Avocado = artifacts.require("./Avocado.sol");
-const { fromAscii, prettyLog } = require("./utils");
+const { fromAscii, prettyLog, toAscii } = require("./utils");
 
 contract("Avocado", accounts => {
   const [josh, kendrick, adrian] = accounts;
@@ -73,7 +73,7 @@ contract("Avocado", accounts => {
 
     // Get the teacher address with tag 'Japanese'
     const tagAddresses = await instance.filterByTag(
-      fromAscii("Japanese"),
+      fromAscii("Japanese", "Memes"),
       true // isTeacher(bool)
     );
 
@@ -177,5 +177,16 @@ contract("Avocado", accounts => {
 
     const secondMsgSentToJosh = joshMessages[1][0];
     assert.equal("It's a hackathon fam", secondMsgSentToJosh);
+  });
+
+  it("should return a list of unique tags", async () => {
+    const instance = await Avocado.deployed();
+    
+    const tagsInB32 = await instance.getTagsList();
+
+    // There were 5 total tags entered above: 2 were duplicates
+    // Initial tag in tagList is empty string 
+    //so we expect 3+1 = 4 unique tags
+    assert.equal(tagsInB32.length, 4)
   });
 });
