@@ -17,21 +17,26 @@ contract("Avocado", accounts => {
     const student = {
       address: kendrick,
       name: "kendrick",
+      description: "this is a description of a student"
     };
 
+    // Convert teacher tags to bytes32
+    const tagsInBytes32 = teacher.tags.map(fromAscii);
+
     // Setting the teacher and student respectively
-    instance.initSelf(
-      true, // isTeacher (bool)
+    instance.initTeacher(
       teacher.name,
       teacher.description,
       teacher.weiPerHour,
+      tagsInBytes32,
       { from: teacher.address }
     );
-    instance.initSelf(false, student.name, "", null, { from: student.address });
-
-    // Placing some tags in for next test
-    const tagsInBytes32 = teacher.tags.map(fromAscii);
-    instance.setPersonTags(teacher.address, tagsInBytes32, { from: josh });
+    
+    instance.initStudent(
+      student.name, 
+      student.description,
+      { from: student.address }
+    );
 
     // Fetch the persons back
     const teacherRes = await instance.getPerson(teacher.address);
@@ -55,21 +60,16 @@ contract("Avocado", accounts => {
       weiPerHour: 1000000000000000, // 0.001ETH
       tags: ["Japanese"],
     };
+    const adrianTagsInB32 = adrianObj.tags.map(fromAscii);
 
-    // Create the person object
-    instance.initSelf(
-      adrianObj.isTeacher,
+    // Create the person object for Adrian
+    instance.initTeacher(
       adrianObj.name,
       adrianObj.description,
       adrianObj.weiPerHour,
+      adrianTagsInB32,
       { from: adrianObj.address }
     );
-
-    // Assigning tags
-    const adrianTagsInB32 = adrianObj.tags.map(fromAscii);
-    instance.setPersonTags(adrianObj.address, adrianTagsInB32, {
-      from: adrianObj.address,
-    });
 
     // Get the teacher address with tag 'Japanese'
     const tagAddresses = await instance.filterByTag(
