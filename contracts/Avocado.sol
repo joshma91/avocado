@@ -78,29 +78,34 @@ contract Avocado {
     address[] public studentList;
     address[] public teacherList;
 
-    event PaymentSuccess(bytes32 translationID, address teacher, address student, uint value, uint duration);
+    event PaymentSuccess(bytes32 meetingID, address teacher, address student, uint value, uint duration);
 
-    // Initializes self as a teacher, or student
+    // Initializes self as a teacher
     // Once set you can't change this
-    function initSelf(bool isTeacher, string name, string description, uint weiPerHour) public {
-        Person storage user = users[msg.sender];        
+    function initTeacher(string name, string description, uint weiPerHour, bytes32[] ts) public {
+        Person storage user = users[msg.sender];
 
         // If user doesn't exist then append it to the global list
         require(!user.exists);
-        
-        // Push to globals
-        if (isTeacher) {
-            teacherList.push(msg.sender);
-        } else {
-            studentList.push(msg.sender);
-        }
-        
-        // PersonType
-        user.personType = (isTeacher) ? PersonType.Teacher : PersonType.Student;
+
+        teacherList.push(msg.sender);
+        user.personType = PersonType.Teacher;
+
         user.exists = true;
 
-        // Can set rest via setPerson
         setPerson(msg.sender, name, description, weiPerHour);
+        setPersonTags(msg.sender, ts);
+    }
+
+    // Initializes self as a student
+    function initStudent(string name, string description) public {
+        Person storage user = users[msg.sender];
+        studentList.push(msg.sender);
+
+        user.personType = PersonType.Student;
+        user.exists = true;
+
+        setPerson(msg.sender, name, description, 0);
     }
 
     // Sets person attribute
@@ -211,11 +216,8 @@ contract Avocado {
         return tags[t][isTeacher];
     }
 
-    // Sets Person tag
-    // Reason why this is a separate operation
-    // Is because it's expensive (Is this the right way?)
-    function setPersonTags(address addr, bytes32[] ts) public {        
-        require(addr == msg.sender);
+    // Sets Person tags
+    function setPersonTags(address addr, bytes32[] ts) public {
         
         bool isTeacher = users[addr].personType == PersonType.Teacher;
 
