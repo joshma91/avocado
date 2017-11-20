@@ -3,7 +3,7 @@ import socket from "socket.io-client";
 // import webrtc from "rtcmulticonnection-v3";
 import withWeb3 from "../lib/withWeb3";
 
-class VideoChat extends React.Component {
+export default class VideoChat extends React.Component {
   componentDidMount() {
     const connection = new RTCMultiConnection();
 
@@ -56,4 +56,4 @@ class VideoChat extends React.Component {
   }
 }
 
-export default withWeb3(VideoChat);
+// export default withWeb3(VideoChat);
